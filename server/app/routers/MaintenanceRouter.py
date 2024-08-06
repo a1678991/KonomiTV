@@ -52,18 +52,7 @@ async def GetCurrentAdminUserOrLocal(
     request: Request,
     token: Annotated[str | None, Depends(OAuth2PasswordBearer(tokenUrl='users/token', auto_error=False))],
 ) -> User | None:
-    """
-    現在管理者ユーザーでログインしているか、http://127.0.0.77:7010 からのアクセスであるかを確認する
-    KonomiTV の Windows サービスからサーバーをシャットダウンするために必要
-    """
-
-    # HTTP リクエストの Host ヘッダーが 127.0.0.77:7010 である場合、Windows サービスプロセスからのアクセスと見なす
-    ## 通常アクセス時の Host ヘッダーは 192-168-1-11.local.konomi.tv:7000 のような形式になる
-    valid_host = f'127.0.0.77:{Config().server.port + 10}'
-    if request.headers.get('host', '').strip() == valid_host:
-        return None
-
-    # それ以外である場合、管理者ユーザーでログインしているかを確認する
+    # 管理者ユーザーでログインしているかを確認する
     if token is None:
         logging.error('[MaintenanceRouter][GetCurrentAdminUserOrLocal] Not authenticated.')
         raise HTTPException(
