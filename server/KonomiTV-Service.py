@@ -216,7 +216,7 @@ class KonomiTVServiceFramework(win32serviceutil.ServiceFramework):
         try:
             from app.config import GetServerPort
             response = httpx.post(
-                f'http://127.0.0.77:{GetServerPort() + 10}/api/maintenance/shutdown',
+                f'http://127.0.0.1:{GetServerPort()}/api/maintenance/shutdown',
                 timeout = 5.0,
             )
             if 200 <= response.status_code <= 299:

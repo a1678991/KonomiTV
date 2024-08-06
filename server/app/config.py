@@ -279,6 +279,7 @@ class _ServerSettingsGeneral(BaseModel):
         return encoder
 
 class _ServerSettingsServer(BaseModel):
+    host: str = "0.0.0.0"
     port: PositiveInt = 7000
     custom_https_certificate: FilePath | None = None
     custom_https_private_key: FilePath | None = None
