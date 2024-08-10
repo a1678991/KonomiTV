@@ -1,3 +1,6 @@
+# このフォークの目的
+- KonamiTVをnginxなどのリバースプロキシの背後で運用するために必要な変更を加えています
+- 具体的にはKonamiTV自身が持つプロキシの無効化や、意図的に他のリバースプロキシから使いづらくされている部分を修正しています
 
 # <img width="350" src="https://user-images.githubusercontent.com/39271166/134050201-8110f076-a939-4b62-8c86-7beaa3d4728c.png" alt="KonomiTV Logo">　<!-- omit in toc -->
 
