@@ -12,14 +12,15 @@ FROM ubuntu:22.04 AS thirdparty-downloader
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ダウンロード・展開に必要なパッケージのインストール
-RUN apt-get update && apt-get install -y --no-install-recommends aria2 ca-certificates unzip xz-utils
+RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates unzip xz-utils jq
 
 # サードパーティーライブラリをダウンロード
 ## サードパーティーライブラリは変更が少ないので、先にダウンロード処理を実行してビルドキャッシュを効かせる
 WORKDIR /
 ## リリース版用
-RUN aria2c -x10 https://github.com/tsukumijima/KonomiTV/releases/download/v0.11.0/thirdparty-linux.tar.xz
-RUN tar xvf thirdparty-linux.tar.xz
+## ADD latest version number by calling github api to invalidate cache
+ADD https://api.github.com/repos/tsukumijima/KonomiTV/releases/latest latest
+RUN wget https://github.com/tsukumijima/KonomiTV/releases/download/$(jq -r .tag_name < latest)/thirdparty-linux.tar.xz && tar xvf thirdparty-linux.tar.xz
 ## 開発版 (0.x.x-dev) 用
 # RUN aria2c -x10 https://nightly.link/tsukumijima/KonomiTV/actions/runs/10714539752/thirdparty-linux.tar.xz.zip
 # RUN unzip thirdparty-linux.tar.xz.zip && tar xvf thirdparty-linux.tar.xz
