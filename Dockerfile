@@ -12,17 +12,18 @@ FROM ubuntu:22.04 AS thirdparty-downloader
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ダウンロード・展開に必要なパッケージのインストール
-RUN apt-get update && apt-get install -y --no-install-recommends aria2 ca-certificates unzip xz-utils
+RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates unzip xz-utils jq
 
 # サードパーティーライブラリをダウンロード
 ## サードパーティーライブラリは変更が少ないので、先にダウンロード処理を実行してビルドキャッシュを効かせる
 WORKDIR /
 ## リリース版用
-# RUN aria2c -x10 https://github.com/tsukumijima/KonomiTV/releases/download/v0.11.0/thirdparty-linux.tar.xz
-# RUN tar xvf thirdparty-linux.tar.xz
+## ADD latest version number by calling github api to invalidate cache
+ADD https://api.github.com/repos/tsukumijima/KonomiTV/releases/latest latest
+RUN wget https://github.com/tsukumijima/KonomiTV/releases/download/$(jq -r .tag_name < latest)/thirdparty-linux.tar.xz && tar xvf thirdparty-linux.tar.xz
 ## 開発版 (0.x.x-dev) 用
-RUN aria2c -x10 https://nightly.link/tsukumijima/KonomiTV/actions/runs/12216260387/thirdparty-linux.tar.xz.zip
-RUN unzip thirdparty-linux.tar.xz.zip && tar xvf thirdparty-linux.tar.xz
+# RUN aria2c -x10 https://nightly.link/tsukumijima/KonomiTV/actions/runs/10714539752/thirdparty-linux.tar.xz.zip
+# RUN unzip thirdparty-linux.tar.xz.zip && tar xvf thirdparty-linux.tar.xz
 
 # --------------------------------------------------------------------------------------------------------------
 # クライアントをビルドするステージ
@@ -67,9 +68,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     curl -fsSL https://repositories.intel.com/gpu/intel-graphics.key | gpg --dearmor -o /usr/share/keyrings/intel-graphics-keyring.gpg && \
     curl -fsSL https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor -o /usr/share/keyrings/rocm-keyring.gpg && \
     echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics-keyring.gpg] https://repositories.intel.com/gpu/ubuntu jammy client' > /etc/apt/sources.list.d/intel-graphics.list && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/rocm-keyring.gpg] https://repo.radeon.com/amdgpu/23.20/amdgpu/ubuntu/ jammy main' > /etc/apt/sources.list.d/amdgpu.list && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/rocm-keyring.gpg] https://repo.radeon.com/amdgpu/23.20/amdgpu/ubuntu/ jammy proprietary' > /etc/apt/sources.list.d/amdgpu-proprietary.list && \
-    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/rocm-keyring.gpg] https://repo.radeon.com/rocm/apt/5.7 jammy main' > /etc/apt/sources.list.d/rocm.list && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/rocm-keyring.gpg] https://repo.radeon.com/amdgpu/22.20.1/ubuntu jammy main' > /etc/apt/sources.list.d/amdgpu.list && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/rocm-keyring.gpg] https://repo.radeon.com/amdgpu/22.20.1/ubuntu jammy proprietary' > /etc/apt/sources.list.d/amdgpu-proprietary.list && \
+    echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/rocm-keyring.gpg] https://repo.radeon.com/rocm/apt/5.2 ubuntu main' > /etc/apt/sources.list.d/rocm.list && \
     apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
         libfontconfig1 libfreetype6 libfribidi0 \
