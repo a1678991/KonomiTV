@@ -1,0 +1,71 @@
+
+name: Publish Docker Image to GHCR
+
+# master ブランチへの push またはセマンティックバージョンタグへの push で実行
+on:
+  push:
+    branches:
+      - master
+    tags:
+      # セマンティックバージョンタグ (例: v1.0.0, v2.1.3)
+      - 'v*.*.*'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # GitHub Container Registry (ghcr.io) にログイン
+      # GITHUB_TOKEN を使用して認証する
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Docker イメージのタグを決定
+      # master ブランチへの push の場合は latest + コミットハッシュ、タグの場合はタグ名 + コミットハッシュ
+      - name: Determine Docker Image Tags
+        id: tags
+        run: |
+          TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$GITHUB_SHA"
+
+          if [[ "${{ github.ref }}" == refs/heads/master ]]; then
+            # master ブランチの場合は latest タグも追加
+            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # タグ名から v プレフィックスを除去 (例: v1.0.0 -> 1.0.0)
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            TAG_NAME=${TAG_NAME#v}  # v プレフィックスを除去
+            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG_NAME"
+          fi
+
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+      # Docker イメージをビルドして GitHub Container Registry にプッシュ
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # リポジトリへのリンクを追加 (GitHub のパッケージページでリポジトリが表示される)
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
