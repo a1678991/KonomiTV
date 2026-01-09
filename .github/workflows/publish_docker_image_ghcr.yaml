@@ -43,16 +43,18 @@ jobs:
       - name: Determine Docker Image Tags
         id: tags
         run: |
-          TAGS="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$GITHUB_SHA"
+          # リポジトリ名を小文字に変換
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          TAGS="${{ env.REGISTRY }}/$IMAGE_NAME_LOWER:$GITHUB_SHA"
 
           if [[ "${{ github.ref }}" == refs/heads/master ]]; then
             # master ブランチの場合は latest タグも追加
-            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+            TAGS="$TAGS,${{ env.REGISTRY }}/$IMAGE_NAME_LOWER:latest"
           elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             # タグ名から v プレフィックスを除去 (例: v1.0.0 -> 1.0.0)
             TAG_NAME=${GITHUB_REF#refs/tags/}
             TAG_NAME=${TAG_NAME#v}  # v プレフィックスを除去
-            TAGS="$TAGS,${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$TAG_NAME"
+            TAGS="$TAGS,${{ env.REGISTRY }}/$IMAGE_NAME_LOWER:$TAG_NAME"
           fi
 
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
