@@ -332,9 +332,11 @@ class RecordedScanTask:
             if type(pattern) is str and pattern.strip() != ''
         ]
 
-        # 各録画フォルダをスキャン
+        # 各録画フォルダをスキャンし、対象ファイルを収集する
+        # 最終更新日時の降順でソートしてから処理することで、最近録画されたファイルが先に処理される
         logging.info('Scanning recorded folders...')
         processed_canonical_paths: set[str] = set()
+        scan_targets: list[tuple[anyio.Path, anyio.Path, float]] = []  # (canonical_path, original_path, mtime)
         for folder in self.recorded_folders:
             async for file_path in folder.rglob('*'):
                 try:
@@ -369,14 +371,27 @@ class RecordedScanTask:
                         continue
                     processed_canonical_paths.add(canonical_path_str)
 
-                    # 見つかったファイルを処理
-                    await self.processRecordedFile(
-                        file_path = canonical_path,
-                        original_path = file_path,
-                        existing_db_recorded_videos = existing_db_recorded_videos,
-                    )
+                    # ソート用にファイルの最終更新日時を取得する
+                    stat = await canonical_path.stat()
+                    scan_targets.append((canonical_path, file_path, stat.st_mtime))
                 except Exception as ex:
-                    logging.error(f'{file_path}: Failed to process recorded file:', exc_info=ex)
+                    logging.error(f'{file_path}: Failed to scan recorded file:', exc_info=ex)
+
+        # 最終更新日時の降順でソートし、最近録画されたファイルから優先的に処理する
+        scan_targets.sort(key=lambda x: x[2], reverse=True)
+        logging.info(f'Found {len(scan_targets)} recorded files. Processing in newest-first order...')
+
+        total_count = len(scan_targets)
+        for index, (canonical_path, original_path, _) in enumerate(scan_targets, start=1):
+            try:
+                logging.info(f'Processing recorded file ({index}/{total_count}): {canonical_path}')
+                await self.processRecordedFile(
+                    file_path = canonical_path,
+                    original_path = original_path,
+                    existing_db_recorded_videos = existing_db_recorded_videos,
+                )
+            except Exception as ex:
+                logging.error(f'{canonical_path}: Failed to process recorded file:', exc_info=ex)
 
         # 存在しない録画ファイルに対応するレコードを一括削除
         ## トランザクション配下に入れることでパフォーマンスが向上する
