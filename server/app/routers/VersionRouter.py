@@ -38,7 +38,9 @@ async def VersionInformationAPI():
 
     # GitHub API で KonomiTV の最新のタグ (=最新バージョン) を取得
     ## GitHub API は無認証だと60回/1時間までしかリクエストできないので、リクエスト結果を10分ほどキャッシュする
-    if latest_version is None or (time.time() - latest_version_updated_at) > 60 * 10:
+    ## オフラインモード時は外部アクセスを行わず、最新バージョンは常に None (未取得) のままとする
+    ## latest_version が None の場合、クライアントは「アップデートなし」として扱う
+    if Config().general.offline_mode is False and (latest_version is None or (time.time() - latest_version_updated_at) > 60 * 10):
         try:
             async with HTTPX_CLIENT() as client:
                 response = await client.get('https://api.github.com/repos/tsukumijima/KonomiTV/tags')

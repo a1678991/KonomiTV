@@ -18,7 +18,11 @@ from app.constants import HTTPX_CLIENT, JST, LOGO_DIR, VERSION
 from app.models.Channel import Channel
 from app.routers.UsersRouter import GetCurrentUser
 from app.streams.LiveStream import LiveStream
-from app.utils import GetMirakurunAPIEndpointURL, ParseDatetimeStringToJST
+from app.utils import (
+    GetMirakurunAPIEndpointURL,
+    ParseDatetimeStringToJST,
+    VerifyNotOfflineMode,
+)
 from app.utils.edcb.CtrlCmdUtil import CtrlCmdUtil
 from app.utils.edcb.EDCBUtil import EDCBUtil
 from app.utils.JikkyoClient import JikkyoClient
@@ -533,6 +537,8 @@ async def ChannelLogoAPI(
     summary = 'ニコニコ実況 WebSocket URL API',
     response_description = 'ニコニコ実況コメント送受信用 WebSocket API の情報。',
     response_model = schemas.JikkyoWebSocketInfo,
+    # オフラインモード時は 503 を返す (通常クライアント側で事前にオフラインモードを判定するため、これは保険的なガード)
+    dependencies = [Depends(VerifyNotOfflineMode)],
 )
 async def ChannelJikkyoWebSocketInfoAPI(
     request: Request,
