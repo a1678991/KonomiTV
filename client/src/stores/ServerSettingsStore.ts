@@ -1,6 +1,6 @@
 
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import Settings, { type IServerSettings, IServerSettingsDefault } from '@/services/Settings';
 
@@ -19,6 +19,16 @@ const useServerSettingsStore = defineStore('serverSettings', () => {
 
     // 進行中の取得 Promise を保持
     let fetch_promise: Promise<IServerSettings | null> | null = null;
+
+    // サーバーがオフラインモードで動作しているかどうか
+    // サーバー設定が未取得の間はデフォルト値を信用せず、常に false を返す (誤ってオフラインモード扱いにしないため)
+    // 参照する側は事前に fetchServerSettingsOnce() を呼び、取得完了後に判定すること
+    const is_offline_mode = computed(() => {
+        if (is_loaded.value !== true) {
+            return false;
+        }
+        return server_settings.value.general.offline_mode;
+    });
 
 
     /**
@@ -56,6 +66,7 @@ const useServerSettingsStore = defineStore('serverSettings', () => {
         server_settings,
         is_loaded,
         is_loading,
+        is_offline_mode,
         fetchServerSettingsOnce,
     };
 });
