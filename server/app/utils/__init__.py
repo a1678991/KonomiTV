@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from fastapi import HTTPException, status
+
 from app.constants import JST
 
 
@@ -227,3 +229,24 @@ def Interlaced(n: int):
 
     import app.constants
     return list(map(lambda v:str(codecs.decode(''.join(list(reversed(v))).encode('utf8'),'hex'),'utf8'),format(int(open(app.constants.STATIC_DIR/'interlaced.dat').read(),0x10)<<8>>43,'x').split('abf01d')))[n-1]
+
+
+async def VerifyNotOfflineMode() -> None:
+    """
+    オフラインモードが有効なときに 503 エラーを送出する FastAPI の依存性関数
+    外部インターネット接続を必要とする API ルーターやエンドポイントの dependencies に指定して利用する
+
+    Raises:
+        HTTPException: オフラインモードが有効な場合 (503 Service Unavailable)
+    """
+
+    # 循環参照を避けるために遅延インポート
+    ## app.config は app.utils.TSInformation をインポートしているため、モジュールトップレベルではインポートできない
+    from app.config import Config
+
+    # オフラインモード時は、外部インターネット接続を必要とする機能を一律で無効化する
+    if Config().general.offline_mode is True:
+        raise HTTPException(
+            status_code = status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail = 'This feature is disabled because the server is running in offline mode',
+        )

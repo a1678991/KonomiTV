@@ -24,6 +24,7 @@ from app.constants import API_REQUEST_HEADERS
 from app.models.TwitterAccount import TwitterAccount
 from app.models.User import User
 from app.routers.UsersRouter import GetCurrentUser
+from app.utils import VerifyNotOfflineMode
 from app.utils.TwitterGraphQLAPI import TwitterGraphQLAPI
 from app.utils.TwitterScrapeBrowser import TwitterScrapeBrowser
 
@@ -32,6 +33,7 @@ from app.utils.TwitterScrapeBrowser import TwitterScrapeBrowser
 router = APIRouter(
     tags = ['Twitter'],
     prefix = '/api/twitter',
+    dependencies = [Depends(VerifyNotOfflineMode)],
 )
 
 def ParseAcceptLanguageHeader(accept_language: str | None) -> list[str]:

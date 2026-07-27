@@ -12,7 +12,7 @@ from app import logging, schemas
 from app.constants import API_REQUEST_HEADERS, HTTPX_CLIENT, NICONICO_OAUTH_CLIENT_ID
 from app.models.User import User
 from app.routers.UsersRouter import GetCurrentUser
-from app.utils import Interlaced
+from app.utils import Interlaced, VerifyNotOfflineMode
 from app.utils.OAuthCallbackResponse import OAuthCallbackResponse
 
 
@@ -20,6 +20,7 @@ from app.utils.OAuthCallbackResponse import OAuthCallbackResponse
 router = APIRouter(
     tags = ['Niconico'],
     prefix = '/api/niconico',
+    dependencies = [Depends(VerifyNotOfflineMode)],
 )
 
 
