@@ -94,6 +94,17 @@
                 </v-slider>
             </div>
             <div class="settings__item settings__item--switch">
+                <label class="settings__item-heading" for="offline_mode">オフラインモードを有効にする</label>
+                <label class="settings__item-label" for="offline_mode">
+                    有効にすると、外部インターネット接続を必要とする機能 (ニコニコ実況コメント・ニコニコアカウント連携・Twitter / Bluesky 連携・アップデートチェック・データ放送のインターネット接続機能) がすべて無効になります。<br>
+                    インターネットに接続できない環境や、外部にアクセスさせたくない環境向けの設定です。<br>
+                    なお、HTTPS 化に利用している Akebi HTTPS Server はインターネット接続を必要とするため、完全にインターネットから隔離された環境では、別途カスタム HTTPS 証明書/秘密鍵の設定が必要です。<br>
+                </label>
+                <v-switch class="settings__item-switch" color="primary" id="offline_mode" hide-details
+                    v-model="server_settings.general.offline_mode">
+                </v-switch>
+            </div>
+            <div class="settings__item settings__item--switch">
                 <label class="settings__item-heading" for="debug">デバッグモードを有効にする</label>
                 <label class="settings__item-label" for="debug">
                     有効にすると、デバッグログも出力されるようになります。<br>
