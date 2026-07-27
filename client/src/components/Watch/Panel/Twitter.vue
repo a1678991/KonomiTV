@@ -1319,6 +1319,9 @@ export default defineComponent({
             font-size: 20px;
             font-weight: bold;
             text-align: center;
+            @include smartphone-horizontal {
+                font-size: 16px;
+            }
         }
 
         &__text {
@@ -1327,6 +1330,9 @@ export default defineComponent({
             font-size: 13.5px;
             text-align: center;
             line-height: 1.65;
+            @include smartphone-horizontal {
+                font-size: 12px;
+            }
         }
     }
 

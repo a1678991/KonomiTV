@@ -510,9 +510,14 @@ class PlayerController {
                             const jikkyo_comments = await Videos.fetchVideoJikkyoComments(player_store.recorded_program.id);
                             if (jikkyo_comments.is_success === false) {
                                 // 取得に失敗した場合はコメントリストにエラーメッセージを表示する
-                                // ただし「この録画番組の過去ログコメントは存在しないか、現在取得中です。」の場合はエラー扱いしない
                                 player_store.video_comment_init_failed_message = jikkyo_comments.detail;
-                                if (jikkyo_comments.detail !== 'この録画番組の過去ログコメントは存在しないか、現在取得中です。') {
+                                // 予期されたエラーメッセージ (過去ログ未取得・オフラインモード) はコメントリストにのみ表示し、エラートーストは表示しない
+                                // オフラインモードはクライアント側でも上で弾いているが、サーバー設定の取得に失敗した場合などはここに到達する
+                                const expected_error_messages = [
+                                    'この録画番組の過去ログコメントは存在しないか、現在取得中です。',
+                                    'サーバーがオフラインモードのため、過去ログコメントを取得できません。',
+                                ];
+                                if (expected_error_messages.includes(jikkyo_comments.detail) === false) {
                                     options.error(jikkyo_comments.detail);
                                 } else {
                                     options.success([]);

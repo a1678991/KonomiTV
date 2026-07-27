@@ -235,6 +235,12 @@ class APIClient {
                 Message.error(`${template}\nこのリソースにアクセスする権限がありません。`);
                 return;
             }
+            // サーバーがオフラインモードのとき、外部インターネット接続を必要とする API は一律で 503 を返す
+            // クライアント側でも UI を無効化しているが、古いキャッシュなどで API が叩かれた場合に備えて分かりやすいメッセージを表示する
+            case 'This feature is disabled because the server is running in offline mode': {
+                Message.error(`${template}\nサーバーがオフラインモードのため、この機能は利用できません。`);
+                return;
+            }
             default: {
                 if (Array.isArray(error_response.data.detail)) {
                     // バリデーションエラーが発生した場合
