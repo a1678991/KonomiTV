@@ -23,6 +23,7 @@ from starlette.datastructures import Headers
 from tortoise import connections
 
 from app import logging, schemas
+from app.config import Config
 from app.constants import STATIC_DIR, THUMBNAILS_DIR
 from app.metadata.RecordedScanTask import RecordedScanTask
 from app.metadata.ThumbnailGenerator import ThumbnailGenerator
@@ -734,6 +735,15 @@ async def VideoJikkyoCommentsAPI(
     指定された録画番組の放送中に投稿されたニコニコ実況の過去ログコメントを取得する。<br>
     ニコニコ実況 過去ログ API をラップし、DPlayer が受け付けるコメント形式に変換して返す。
     """
+
+    # オフラインモード時はニコニコ実況 過去ログ API へのアクセスを行わず、エラーメッセージを返す
+    ## エラーメッセージはクライアントのコメントパネルにそのまま表示される
+    if Config().general.offline_mode is True:
+        return schemas.JikkyoComments(
+            is_success = False,
+            comments = [],
+            detail = 'サーバーがオフラインモードのため、過去ログコメントを取得できません。',
+        )
 
     # チャンネル情報と録画開始時刻/録画終了時刻の情報がある場合のみ
     if ((recorded_program.channel is not None) and

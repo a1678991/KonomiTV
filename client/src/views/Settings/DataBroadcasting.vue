@@ -23,7 +23,8 @@
                     v-model="settingsStore.settings.tv_show_data_broadcasting">
                 </v-switch>
             </div>
-            <div class="settings__item settings__item--switch settings__item--sync-disabled">
+            <div class="settings__item settings__item--switch settings__item--sync-disabled"
+                :class="{'settings__item--disabled': serverSettingsStore.is_offline_mode}">
                 <label class="settings__item-heading" for="enable_internet_access_from_data_broadcasting">データ放送からのインターネットアクセスを有効にする</label>
                 <label class="settings__item-label" for="enable_internet_access_from_data_broadcasting">
                     オンにすると、データ放送機能を利用する際に、データ放送からインターネットにアクセスできるようになります。<br>
@@ -34,7 +35,11 @@
                     大半のチャンネルでは個別に視聴データの送信を無効化できますが、依然プライバシー上の問題が残ります。
                     通常はオフにしておき、双方向コンテンツを使うときだけオンにすることをおすすめします。<br>
                 </label>
+                <label class="settings__item-label text-error-lighten-1" v-if="serverSettingsStore.is_offline_mode" for="enable_internet_access_from_data_broadcasting">
+                    サーバーがオフラインモードのため、この設定を有効にしてもデータ放送からインターネットにアクセスすることはできません。<br>
+                </label>
                 <v-switch class="settings__item-switch" color="primary" id="enable_internet_access_from_data_broadcasting" hide-details
+                    :disabled="serverSettingsStore.is_offline_mode"
                     v-model="settingsStore.settings.enable_internet_access_from_data_broadcasting">
                 </v-switch>
             </div>
@@ -81,6 +86,7 @@ import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 
 import Message from '@/message';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useSettingsStore from '@/stores/SettingsStore';
 import Utils from '@/utils';
 import SettingsBase from '@/views/Settings/Base.vue';
@@ -171,7 +177,7 @@ export default defineComponent({
         };
     },
     computed: {
-        ...mapStores(useSettingsStore),
+        ...mapStores(useServerSettingsStore, useSettingsStore),
     },
     watch: {
         async data_broadcasting_zip_code(new_value: string) {
@@ -208,6 +214,9 @@ export default defineComponent({
         }
     },
     created() {
+        // オフラインモード判定のためにサーバー設定を取得しておく (取得完了後に is_offline_mode がリアクティブに反映される)
+        this.serverSettingsStore.fetchServerSettingsOnce();
+
         // 郵便番号設定を LocalStorage から読み込む
         const zip_code_raw = localStorage.getItem(`${NVRAM_LOCAL_STORAGE_PREFIX}zipcode`);
         if (zip_code_raw) {

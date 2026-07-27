@@ -630,6 +630,13 @@ class Channel(TortoiseModel):
     async def updateJikkyoStatus(cls) -> None:
         """ チャンネル情報のうち、ニコニコ実況関連のステータスを更新する """
 
+        # オフラインモード時は NX-Jikkyo へのアクセスを行わない
+        ## このメソッドは起動時・番組情報更新時・30秒間隔の定期実行タスクすべてから呼ばれる唯一の窓口のため、
+        ## ここで抑止するだけでニコニコ実況ステータス更新に伴う外部アクセスを完全に止められる
+        ## jikkyo_force は None のままとなり、クライアントは実況勢いをデータなしとして表示する
+        if Config().general.offline_mode is True:
+            return
+
         # 全ての実況チャンネルのステータスを更新
         await JikkyoClient.updateStatuses()
 

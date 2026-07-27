@@ -8,6 +8,7 @@ import router from '@/router';
 import APIClient from '@/services/APIClient';
 import PlayerManager from '@/services/player/PlayerManager';
 import useChannelsStore from '@/stores/ChannelsStore';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useSettingsStore from '@/stores/SettingsStore';
 import Utils, { PlayerUtils } from '@/utils';
 import { ILivePSIArchivedDataDecoder } from '@/workers/LivePSIArchivedDataDecoder';
@@ -88,6 +89,10 @@ class LiveDataBroadcastingManager implements PlayerManager {
      */
     public async init(): Promise<void> {
         const channels_store = useChannelsStore();
+
+        // オフラインモード判定のためにサーバー設定を取得しておく
+        // 以降の各ガードは is_offline_mode を同期的に参照するため、ここで事前に取得を済ませておく必要がある
+        await useServerSettingsStore().fetchServerSettingsOnce();
 
         const is_data_broadcasting_enabled = useSettingsStore().settings.tv_show_data_broadcasting;
         console.log(`[LiveDataBroadcastingManager] BMLBrowser: ${is_data_broadcasting_enabled ? 'enabled' : 'disabled'}`);
@@ -234,7 +239,9 @@ class LiveDataBroadcastingManager implements PlayerManager {
                         // 1: IP 接続は自動接続によって確立している
                         // 2: IP 接続は connectPPP() / connectPPPWithISPParams() により確立している
                         // NaN 失敗
-                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === true) {
+                        // サーバーがオフラインモードのときは、設定に関わらず IP 接続なしとして扱う
+                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === true &&
+                            useServerSettingsStore().is_offline_mode === false) {
                             return 1;
                         } else {
                             return 0;
@@ -242,8 +249,9 @@ class LiveDataBroadcastingManager implements PlayerManager {
                     },
                     // サーバー側のプロキシ API 経由で HTTP GET リクエストを送信し、レスポンスを受け取る
                     async get(uri: string) {
-                        // データ放送からのインターネットアクセスが無効なときは何もしない
-                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === false) {
+                        // データ放送からのインターネットアクセスが無効なとき、またはサーバーがオフラインモードのときは何もしない
+                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === false ||
+                            useServerSettingsStore().is_offline_mode === true) {
                             return {};
                         }
                         // サーバー側のプロキシ API 経由で HTTP GET リクエストを送信する
@@ -266,8 +274,9 @@ class LiveDataBroadcastingManager implements PlayerManager {
                     },
                     // サーバー側のプロキシ API 経由で HTTP POST リクエストを送信し、レスポンスを受け取る
                     async transmitTextDataOverIP(uri: string, body: Uint8Array) {
-                        // データ放送からのインターネットアクセスが無効なときは何もしない
-                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === false) {
+                        // データ放送からのインターネットアクセスが無効なとき、またはサーバーがオフラインモードのときは何もしない
+                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === false ||
+                            useServerSettingsStore().is_offline_mode === true) {
                             return {
                                 resultCode: NaN,
                                 statusCode: '',
@@ -301,8 +310,9 @@ class LiveDataBroadcastingManager implements PlayerManager {
                     },
                     // サーバー側のプロキシ API 経由でインターネット接続状態を確認する
                     async confirmIPNetwork(destination: string, isICMP: boolean, timeoutMillis: number) {
-                        // データ放送からのインターネットアクセスが無効なときは何もしない
-                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === false) {
+                        // データ放送からのインターネットアクセスが無効なとき、またはサーバーがオフラインモードのときは何もしない
+                        if (useSettingsStore().settings.enable_internet_access_from_data_broadcasting === false ||
+                            useServerSettingsStore().is_offline_mode === true) {
                             return null;
                         }
                         interface DataBroadcastingInternetStatus {

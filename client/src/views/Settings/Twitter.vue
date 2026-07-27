@@ -8,7 +8,10 @@
             <Icon icon="fa-brands:twitter" width="22px" />
             <span class="ml-3">Twitter / Bluesky 連携</span>
         </h2>
-        <div class="settings__content" :class="{'settings__content--loading': is_loading}">
+        <div class="settings__quote mt-5" v-if="serverSettingsStore.is_offline_mode">
+            サーバーがオフラインモードのため、Twitter / Bluesky 連携機能は利用できません。<br>
+        </div>
+        <div class="settings__content" :class="{'settings__content--loading': is_loading, 'settings__content--disabled': serverSettingsStore.is_offline_mode}">
             <div class="twitter-accounts">
                 <div class="twitter-accounts__heading" v-if="has_linked_accounts">
                     <Icon icon="fluent:person-board-20-filled" class="mr-2" height="30" />連携中のアカウント
@@ -348,6 +351,7 @@ import AccountLinks from '@/services/AccountLinks';
 import Bluesky, { IBlueskyAuthRequest } from '@/services/Bluesky';
 import Twitter, { IBrowserEnvironmentInfoRequest, ITwitterCookieAuthRequest } from '@/services/Twitter';
 import { IAccountLink } from '@/services/Users';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useSettingsStore from '@/stores/SettingsStore';
 import useUserStore from '@/stores/UserStore';
 import Utils from '@/utils';
@@ -447,7 +451,7 @@ export default defineComponent({
         };
     },
     computed: {
-        ...mapStores(useSettingsStore, useUserStore),
+        ...mapStores(useServerSettingsStore, useSettingsStore, useUserStore),
 
         has_linked_accounts(): boolean {
             if (this.userStore.user === null) {
@@ -476,6 +480,9 @@ export default defineComponent({
         },
     },
     async created() {
+
+        // オフラインモード判定のためにサーバー設定を取得しておく
+        await this.serverSettingsStore.fetchServerSettingsOnce();
 
         // アカウント情報を更新
         await this.userStore.fetchUser();

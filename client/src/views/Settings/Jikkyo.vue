@@ -8,7 +8,10 @@
             <Icon icon="bi:chat-left-text-fill" width="19px" />
             <span class="ml-3">ニコニコ実況</span>
         </h2>
-        <div class="settings__content" :class="{'settings__content--loading': is_loading}">
+        <div class="settings__quote mt-5" v-if="serverSettingsStore.is_offline_mode">
+            サーバーがオフラインモードのため、ニコニコ実況連携機能は利用できません。<br>
+        </div>
+        <div class="settings__content" :class="{'settings__content--loading': is_loading, 'settings__content--disabled': serverSettingsStore.is_offline_mode}">
             <div class="niconico-account niconico-account--anonymous" v-if="userStore.user === null || userStore.user.niconico_user_id === null">
                 <div class="niconico-account-wrapper">
                     <Icon class="flex-shrink-0" icon="bi:chat-left-text-fill" width="45px" />
@@ -165,6 +168,7 @@ import { defineComponent } from 'vue';
 import CommentMuteSettings from '@/components/Settings/CommentMuteSettings.vue';
 import Message from '@/message';
 import Niconico from '@/services/Niconico';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useSettingsStore from '@/stores/SettingsStore';
 import useUserStore from '@/stores/UserStore';
 import Utils from '@/utils';
@@ -210,9 +214,12 @@ export default defineComponent({
         },
     },
     computed: {
-        ...mapStores(useSettingsStore, useUserStore),
+        ...mapStores(useServerSettingsStore, useSettingsStore, useUserStore),
     },
     async created() {
+
+        // オフラインモード判定のためにサーバー設定を取得しておく
+        await this.serverSettingsStore.fetchServerSettingsOnce();
 
         // LocalStorage からコメント表示設定を読み込む
         const show_comment_raw = localStorage.getItem('dplayer-danmaku-show');

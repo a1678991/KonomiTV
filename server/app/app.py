@@ -223,6 +223,10 @@ recorded_scan_task: RecordedScanTask | None = None
 async def Startup():
     global recorded_scan_task
 
+    # オフラインモード有効時は、外部インターネット接続を必要とする機能が無効になっている旨を起動時に一度だけログに出す
+    if CONFIG.general.offline_mode is True:
+        logging.info('Offline mode is enabled. Features that require external internet access are disabled.')
+
     # チャンネル情報を更新
     await Channel.update()
 

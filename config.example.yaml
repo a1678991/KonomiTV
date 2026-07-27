@@ -40,6 +40,16 @@ general:
     # 番組情報を EDCB または Mirakurun / mirakc から取得する間隔を設定します。デフォルトは 5 (分) です。
     program_update_interval: 5.0
 
+    # オフラインモードを有効にするか
+    # 有効にすると、外部インターネット接続を必要とする機能がすべて無効になります。
+    # 具体的には、ニコニコ実況コメント (実況勢いの取得を含む)・ニコニコアカウント連携・Twitter / Bluesky 連携・
+    # アップデートチェック・データ放送のインターネット接続機能が無効になります。
+    # インターネットに接続できない環境や、外部にアクセスさせたくない環境向けの設定です。
+    # なお、KonomiTV の HTTPS 化に利用している Akebi HTTPS Server はインターネット接続を必要とするため、
+    # 完全にインターネットから隔離された環境では、別途 server セクションの custom_https_certificate /
+    # custom_https_private_key の設定が必要です。
+    offline_mode: false
+
     # デバッグモードを有効にするか
     # 有効にすると、デバッグログも出力されるようになります。
     debug: false

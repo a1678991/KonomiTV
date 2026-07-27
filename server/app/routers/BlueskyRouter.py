@@ -19,6 +19,7 @@ from app import logging, schemas
 from app.models.BlueskyAccount import BlueskyAccount
 from app.models.User import User
 from app.routers.UsersRouter import GetCurrentUser
+from app.utils import VerifyNotOfflineMode
 from app.utils.BlueskyAPI import BlueskyAPI, BlueskyReplyReference
 
 
@@ -26,6 +27,7 @@ from app.utils.BlueskyAPI import BlueskyAPI, BlueskyReplyReference
 router = APIRouter(
     tags = ['Bluesky'],
     prefix = '/api/bluesky',
+    dependencies = [Depends(VerifyNotOfflineMode)],
 )
 
 

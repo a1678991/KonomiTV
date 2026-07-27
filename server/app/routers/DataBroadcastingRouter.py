@@ -5,12 +5,23 @@ import time
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Form, HTTPException, Path, Query, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from ping3 import ping
 
 from app import logging, schemas
+from app.config import Config
 from app.constants import API_REQUEST_HEADERS
+from app.utils import VerifyNotOfflineMode
 
 
 # ルーター
@@ -27,6 +38,8 @@ router = APIRouter(
     '/request/{request_url:path}',
     summary = 'データ放送ブラウザ HTTP (GET) リクエストプロキシ API',
     response_description = 'リクエスト URL に対する GET リクエストのレスポンス。',
+    # オフラインモード時は 503 を返し、任意 URL へのプロキシアクセスをサーバー側でも禁止する
+    dependencies = [Depends(VerifyNotOfflineMode)],
 )
 async def BMLBrowserRequestGETProxyAPI(
     request_url: Annotated[str, Path(description='リクエスト URL 。')],
@@ -95,6 +108,8 @@ async def BMLBrowserRequestGETProxyAPI(
     '/request/{request_url:path}',
     summary = 'データ放送ブラウザ HTTP (POST) リクエストプロキシ API',
     response_description = 'リクエスト URL に対する POST リクエストのレスポンス。',
+    # オフラインモード時は 503 を返し、任意 URL へのプロキシアクセスをサーバー側でも禁止する
+    dependencies = [Depends(VerifyNotOfflineMode)],
 )
 async def BMLBrowserRequestPOSTProxyAPI(
     request_url: Annotated[str, Path(description='リクエスト URL 。')],
@@ -173,6 +188,14 @@ async def BMLBrowserInternetStatusAPI(
     Web ブラウザからの HTTP リクエストには CORS の制限があるため、この API により KonomiTV サーバー側がネットに接続できるかが確認される。<br>
     web-bml のネット接続機能専用の API で、web-bml 以外からは利用されない。
     """
+
+    # オフラインモード時は外部への疎通確認を行わず、常に接続不可として返す
+    if Config().general.offline_mode is True:
+        return schemas.DataBroadcastingInternetStatus(
+            success = False,
+            ip_address = None,
+            response_time_milliseconds = None,
+        )
 
     # ICMP を使用する場合は ping3 ライブラリで ICMP パケットのレスポンス時間を取得
     if is_icmp is True:

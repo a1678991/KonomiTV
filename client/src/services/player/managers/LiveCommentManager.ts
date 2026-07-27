@@ -6,6 +6,7 @@ import Channels from '@/services/Channels';
 import PlayerManager from '@/services/player/PlayerManager';
 import useChannelsStore from '@/stores/ChannelsStore';
 import usePlayerStore from '@/stores/PlayerStore';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useSettingsStore from '@/stores/SettingsStore';
 import useUserStore from '@/stores/UserStore';
 import Utils, { dayjs, CommentUtils } from '@/utils';
@@ -101,7 +102,12 @@ class LiveCommentManager implements PlayerManager {
             console.error(`[LiveCommentManager][WatchSession] Error: ${watch_session_info.detail}`);
 
             // 通常発生しないエラーメッセージ (サーバーエラーなど) はプレイヤー側にも通知する
-            if (watch_session_info.detail !== 'このチャンネルはニコニコ実況に対応していません。') {
+            // 予期されたエラーメッセージ (実況チャンネル非対応・オフラインモード) はコメントパネルにのみ表示し、プレイヤー通知は行わない
+            const expected_error_messages = [
+                'このチャンネルはニコニコ実況に対応していません。',
+                'サーバーがオフラインモードのため、実況コメントを利用できません。',
+            ];
+            if (expected_error_messages.includes(watch_session_info.detail) === false) {
                 if (this.player.template.notice.textContent!.includes('再起動しています…') === false) {
                     this.player.notice(watch_session_info.detail, undefined, undefined, '#FF6F6A');
                 }
@@ -123,8 +129,19 @@ class LiveCommentManager implements PlayerManager {
      */
     private async initWatchSession(): Promise<IWatchSessionInfo> {
         const channels_store = useChannelsStore();
+        const server_settings_store = useServerSettingsStore();
         const settings_store = useSettingsStore();
         const user_store = useUserStore();
+
+        // サーバーがオフラインモードの場合、実況コメント機能自体を無効化する
+        // このエラーメッセージはコメントパネルにそのまま表示される (init() 側で予期されたエラーとして扱われ、プレイヤー通知は行われない)
+        await server_settings_store.fetchServerSettingsOnce();
+        if (server_settings_store.is_offline_mode === true) {
+            return {
+                is_success: false,
+                detail: 'サーバーがオフラインモードのため、実況コメントを利用できません。',
+            };
+        }
 
         // サーバーから disconnect メッセージが送られてきた際のフラグ
         let is_disconnect_message_received = false;

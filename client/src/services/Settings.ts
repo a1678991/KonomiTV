@@ -116,6 +116,7 @@ export interface IServerSettings {
         mirakurun_url: string;
         encoder: 'FFmpeg' | 'QSVEncC' | 'NVEncC' | 'VCEEncC' | 'rkmppenc';
         program_update_interval: number;
+        offline_mode: boolean;
         debug: boolean;
         debug_encoder: boolean;
     };
@@ -147,6 +148,7 @@ export const IServerSettingsDefault: IServerSettings = {
         mirakurun_url: 'http://127.0.0.1:40772/',
         encoder: 'FFmpeg',
         program_update_interval: 5.0,
+        offline_mode: false,
         debug: false,
         debug_encoder: false,
     },

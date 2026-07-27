@@ -145,6 +145,7 @@ class _ServerSettingsGeneral(BaseModel):
     mirakurun_url: Annotated[Url, UrlConstraints(allowed_schemes=['http', 'https'])] = Url('http://127.0.0.1:40772/')
     encoder: Literal['FFmpeg', 'QSVEncC', 'NVEncC', 'VCEEncC', 'rkmppenc'] = 'FFmpeg'
     program_update_interval: Annotated[float, confloat(ge=0.1)] = 5.0
+    offline_mode: bool = False
     debug: bool = False
     debug_encoder: bool = False
 
