@@ -19,6 +19,7 @@ import PlayerManager from '@/services/player/PlayerManager';
 import Videos from '@/services/Videos';
 import useChannelsStore from '@/stores/ChannelsStore';
 import usePlayerStore from '@/stores/PlayerStore';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useSettingsStore, { LiveStreamingQuality, LIVE_STREAMING_QUALITIES, VideoStreamingQuality, VIDEO_STREAMING_QUALITIES } from '@/stores/SettingsStore';
 import Utils, { dayjs, PlayerUtils } from '@/utils';
 
@@ -497,36 +498,45 @@ class PlayerController {
                         // ライブ視聴では LiveCommentManager 側でリアルタイムにコメントを受信して直接描画するため、ここでは一旦コメント0件として認識させる
                         options.success([]);
                     } else {
-                        // ビデオ視聴: 過去ログコメントを取得して返す
-                        const jikkyo_comments = await Videos.fetchVideoJikkyoComments(player_store.recorded_program.id);
-                        if (jikkyo_comments.is_success === false) {
-                            // 取得に失敗した場合はコメントリストにエラーメッセージを表示する
-                            // ただし「この録画番組の過去ログコメントは存在しないか、現在取得中です。」の場合はエラー扱いしない
-                            player_store.video_comment_init_failed_message = jikkyo_comments.detail;
-                            if (jikkyo_comments.detail !== 'この録画番組の過去ログコメントは存在しないか、現在取得中です。') {
-                                options.error(jikkyo_comments.detail);
-                            } else {
-                                options.success([]);
-                            }
+                        // サーバーがオフラインモードの場合は過去ログコメントを取得せず、コメントリストにその旨を表示する
+                        const server_settings_store = useServerSettingsStore();
+                        await server_settings_store.fetchServerSettingsOnce();
+                        if (server_settings_store.is_offline_mode === true) {
+                            // コメント0件として扱う (エラートーストは表示しない)
+                            player_store.video_comment_init_failed_message = 'サーバーがオフラインモードのため、過去ログコメントを利用できません。';
+                            options.success([]);
                         } else {
-                            // 過去ログコメントを取得できているということは、recording_start_time は null ではないはず
-                            const recording_start_time = player_store.recorded_program.recorded_video.recording_start_time!;
-                            // コメントリストに取得した過去ログコメントを送る
-                            // コメ番は重複している可能性がないとも言い切れないので、別途連番を振る
-                            let count = 0;
-                            player_store.event_emitter.emit('CommentReceived', {
-                                is_initial_comments: true,
-                                comments: jikkyo_comments.comments.map((comment) => ({
-                                    id: count++,
-                                    text: comment.text,
-                                    time: Utils.apply28HourClock(dayjs(recording_start_time).add(comment.time, 'seconds').format('MM/DD HH:mm:ss')),
-                                    playback_position: comment.time,
-                                    user_id: comment.author,
-                                    premium: null,
-                                    my_post: false,
-                                })),
-                            });
-                            options.success(jikkyo_comments.comments);
+                            // ビデオ視聴: 過去ログコメントを取得して返す
+                            const jikkyo_comments = await Videos.fetchVideoJikkyoComments(player_store.recorded_program.id);
+                            if (jikkyo_comments.is_success === false) {
+                                // 取得に失敗した場合はコメントリストにエラーメッセージを表示する
+                                // ただし「この録画番組の過去ログコメントは存在しないか、現在取得中です。」の場合はエラー扱いしない
+                                player_store.video_comment_init_failed_message = jikkyo_comments.detail;
+                                if (jikkyo_comments.detail !== 'この録画番組の過去ログコメントは存在しないか、現在取得中です。') {
+                                    options.error(jikkyo_comments.detail);
+                                } else {
+                                    options.success([]);
+                                }
+                            } else {
+                                // 過去ログコメントを取得できているということは、recording_start_time は null ではないはず
+                                const recording_start_time = player_store.recorded_program.recorded_video.recording_start_time!;
+                                // コメントリストに取得した過去ログコメントを送る
+                                // コメ番は重複している可能性がないとも言い切れないので、別途連番を振る
+                                let count = 0;
+                                player_store.event_emitter.emit('CommentReceived', {
+                                    is_initial_comments: true,
+                                    comments: jikkyo_comments.comments.map((comment) => ({
+                                        id: count++,
+                                        text: comment.text,
+                                        time: Utils.apply28HourClock(dayjs(recording_start_time).add(comment.time, 'seconds').format('MM/DD HH:mm:ss')),
+                                        playback_position: comment.time,
+                                        user_id: comment.author,
+                                        premium: null,
+                                        my_post: false,
+                                    })),
+                                });
+                                options.success(jikkyo_comments.comments);
+                            }
                         }
                         // コメント表示をシーク状態に同期する
                         // ここでシークしておかないと、DPlayer の初期化直後にシークした際にシーク位置より前のコメントが一斉に描画されてしまう
