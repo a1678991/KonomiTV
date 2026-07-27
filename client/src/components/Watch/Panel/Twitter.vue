@@ -1,191 +1,199 @@
 <template>
     <div class="twitter-container">
-        <div class="tab-container">
-            <TwitterSearch :class="{'tab-content--active': playerStore.twitter_active_tab === 'Search'}" />
-            <TwitterTimeline :class="{'tab-content--active': playerStore.twitter_active_tab === 'Timeline'}"
-                :is-twitter-panel-visible="isTwitterPanelVisible" :is-timeline-tab-active="playerStore.twitter_active_tab === 'Timeline'" />
-            <TwitterCaptures :class="{'tab-content--active': playerStore.twitter_active_tab === 'Capture'}" />
-        </div>
-        <div class="tab-button-container">
-            <div v-ripple class="tab-button" :class="{'tab-button--active': playerStore.twitter_active_tab === 'Search'}"
-                @click="playerStore.twitter_active_tab = 'Search'">
-                <Icon icon="fluent:search-16-filled" height="18px" />
-                <span class="tab-button__text">ツイート検索</span>
-            </div>
-            <div v-ripple class="tab-button" :class="{'tab-button--active': playerStore.twitter_active_tab === 'Timeline'}"
-                @click="playerStore.twitter_active_tab = 'Timeline'">
-                <Icon icon="fluent:home-16-regular" height="18px" />
-                <span class="tab-button__text">タイムライン</span>
-            </div>
-            <div v-ripple class="tab-button" :class="{'tab-button--active': playerStore.twitter_active_tab === 'Capture'}"
-                @click="playerStore.twitter_active_tab = 'Capture'">
-                <Icon icon="fluent:image-copy-20-regular" height="18px" />
-                <span class="tab-button__text">キャプチャ</span>
+        <div class="twitter-offline-announce" v-if="serverSettingsStore.is_offline_mode">
+            <div class="twitter-offline-announce__heading">Twitter / Bluesky 連携機能は利用できません。</div>
+            <div class="twitter-offline-announce__text">
+                <p class="mt-0 mb-0">サーバーがオフラインモードのため、Twitter / Bluesky 連携機能を利用できません。</p>
             </div>
         </div>
-        <div class="tweet-form" :class="{
-            'tweet-form--focused': is_tweet_hashtag_form_focused || is_tweet_text_form_focused,
-            'tweet-form--virtual-keyboard-display': playerStore.is_virtual_keyboard_display &&
-                (Utils.hasActiveElementClass('tweet-form__hashtag-form') || Utils.hasActiveElementClass('tweet-form__textarea')) &&
-                (() => {is_hashtag_list_display = false; return true;})(),
-        }">
-            <div class="tweet-form__hashtag">
-                <!-- input[type=search] を使っているのは autocomplete 避け目的のはず -->
-                <input class="tweet-form__hashtag-form" type="search" enterkeyhint="done" placeholder="#ハッシュタグ" spellcheck="false"
-                    v-model="tweet_hashtag" @input="updateTweetLetterCount()"
-                    @focus="is_tweet_hashtag_form_focused = true" @blur="is_tweet_hashtag_form_focused = false"
-                    @change="tweet_hashtag = formatHashtag(tweet_hashtag); updateTweetLetterCount()">
-                <div v-ripple class="tweet-form__hashtag-list-button" @click="clickHashtagListButton()">
-                    <Icon icon="fluent:clipboard-text-ltr-32-regular" height="22px" />
+        <template v-else>
+            <div class="tab-container">
+                <TwitterSearch :class="{'tab-content--active': playerStore.twitter_active_tab === 'Search'}" />
+                <TwitterTimeline :class="{'tab-content--active': playerStore.twitter_active_tab === 'Timeline'}"
+                    :is-twitter-panel-visible="isTwitterPanelVisible" :is-timeline-tab-active="playerStore.twitter_active_tab === 'Timeline'" />
+                <TwitterCaptures :class="{'tab-content--active': playerStore.twitter_active_tab === 'Capture'}" />
+            </div>
+            <div class="tab-button-container">
+                <div v-ripple class="tab-button" :class="{'tab-button--active': playerStore.twitter_active_tab === 'Search'}"
+                    @click="playerStore.twitter_active_tab = 'Search'">
+                    <Icon icon="fluent:search-16-filled" height="18px" />
+                    <span class="tab-button__text">ツイート検索</span>
+                </div>
+                <div v-ripple class="tab-button" :class="{'tab-button--active': playerStore.twitter_active_tab === 'Timeline'}"
+                    @click="playerStore.twitter_active_tab = 'Timeline'">
+                    <Icon icon="fluent:home-16-regular" height="18px" />
+                    <span class="tab-button__text">タイムライン</span>
+                </div>
+                <div v-ripple class="tab-button" :class="{'tab-button--active': playerStore.twitter_active_tab === 'Capture'}"
+                    @click="playerStore.twitter_active_tab = 'Capture'">
+                    <Icon icon="fluent:image-copy-20-regular" height="18px" />
+                    <span class="tab-button__text">キャプチャ</span>
                 </div>
             </div>
-            <textarea class="tweet-form__textarea" enterkeyhint="enter" placeholder="ツイート" spellcheck="false" v-model="tweet_text" ref="tweet_text"
-                @input="updateTweetLetterCount()"
-                @paste="pasteClipboardData($event)"
-                @focus="is_tweet_text_form_focused = true"
-                @blur="is_tweet_text_form_focused = false">
-            </textarea>
-            <div class="tweet-form__control" :class="{
-                'tweet-form__control--linked': twitterStore.selected_account?.kind === 'Linked',
+            <div class="tweet-form" :class="{
+                'tweet-form--focused': is_tweet_hashtag_form_focused || is_tweet_text_form_focused,
+                'tweet-form--virtual-keyboard-display': playerStore.is_virtual_keyboard_display &&
+                    (Utils.hasActiveElementClass('tweet-form__hashtag-form') || Utils.hasActiveElementClass('tweet-form__textarea')) &&
+                    (() => {is_hashtag_list_display = false; return true;})(),
             }">
-                <div v-ripple class="account-button" :class="{'account-button--no-login': !twitterStore.has_twitter_panel_account}"
-                    @click="clickAccountButton()">
-                    <img class="account-button__icon"
-                        :src="twitterStore.has_twitter_panel_account ? selectedAccountIconUrl : '/assets/images/account-icon-default.png'">
-                    <span class="account-button__screen-name">
-                        {{twitterStore.has_twitter_panel_account ? selectedAccountDisplayId : '連携されていません'}}
-                    </span>
-                    <Icon class="account-button__menu" icon="fluent:more-circle-20-regular" width="18px" />
-                </div>
-                <button v-if="twitterStore.selected_account?.kind === 'Linked'" v-ripple
-                    class="post-target-button" @click="cycleLinkedPostTarget()">
-                    <span v-if="isLinkedPostTargetBoth" class="dual-service-icon dual-service-icon--post-target">
-                        <Icon icon="fa-brands:twitter" />
-                        <Icon icon="simple-icons:bluesky" />
-                    </span>
-                    <Icon v-else-if="shouldPostToTwitter" icon="fa-brands:twitter" width="14px" />
-                    <Icon v-else-if="shouldPostToBluesky" icon="simple-icons:bluesky" width="14px" />
-                </button>
-                <div class="limit-meter">
-                    <div class="limit-meter__content" :class="{
-                        'limit-meter__content--yellow': tweet_letter_remain_count <= 20,
-                        'limit-meter__content--red': tweet_letter_remain_count <= 0,
-                    }">
-                        <Icon icon="fa-brands:twitter" width="12px" style="margin-right: -2px;" />
-                        <span>{{tweet_letter_remain_count}}</span>
-                    </div>
-                    <div class="limit-meter__content">
-                        <Icon icon="fluent:image-16-filled" width="14px" />
-                        <span>{{playerStore.twitter_selected_capture_blobs.length}}/4</span>
+                <div class="tweet-form__hashtag">
+                    <!-- input[type=search] を使っているのは autocomplete 避け目的のはず -->
+                    <input class="tweet-form__hashtag-form" type="search" enterkeyhint="done" placeholder="#ハッシュタグ" spellcheck="false"
+                        v-model="tweet_hashtag" @input="updateTweetLetterCount()"
+                        @focus="is_tweet_hashtag_form_focused = true" @blur="is_tweet_hashtag_form_focused = false"
+                        @change="tweet_hashtag = formatHashtag(tweet_hashtag); updateTweetLetterCount()">
+                    <div v-ripple class="tweet-form__hashtag-list-button" @click="clickHashtagListButton()">
+                        <Icon icon="fluent:clipboard-text-ltr-32-regular" height="22px" />
                     </div>
                 </div>
-                <button class="tweet-button" :class="tweetButtonClass" v-ripple="Utils.isTouchDevice() === false" :disabled="is_tweet_button_disabled"
-                    @click="sendTweet()" @touchstart="sendTweet()">
-                    <span v-if="shouldPostToBothServices" class="dual-service-icon dual-service-icon--tweet-button">
-                        <Icon icon="fa-brands:twitter" />
-                        <Icon icon="simple-icons:bluesky" />
-                    </span>
-                    <Icon v-else-if="shouldPostToTwitter" icon="fa-brands:twitter" height="16px" />
-                    <Icon v-else-if="shouldPostToBluesky" icon="simple-icons:bluesky" height="15px" />
-                    <span class="ml-1">{{tweetButtonLabel}}</span>
-                </button>
-            </div>
-        </div>
-        <div class="hashtag-list" :class="{
-            'hashtag-list--display': is_hashtag_list_display,
-            'hashtag-list--virtual-keyboard-display': playerStore.is_virtual_keyboard_display && Utils.hasActiveElementClass('hashtag__input'),
-        }">
-            <div class="hashtag-heading">
-                <div class="hashtag-heading__text">
-                    <Icon icon="charm:hash" width="17px" />
-                    <span class="ml-1">ハッシュタグリスト</span>
-                </div>
-                <button v-ripple class="hashtag-heading__add-button"
-                    @click="saved_twitter_hashtags.push({id: Utils.time(), text: '#ここにハッシュタグを入力', editing: false})">
-                    <Icon icon="fluent:add-12-filled" width="17px" />
-                    <span class="ml-1">追加</span>
-                </button>
-            </div>
-            <draggable class="hashtag-container" handle=".hashtag__sort-handle" item-key="id"
-                v-model="saved_twitter_hashtags">
-                <!-- スロットの仕様上、名前は element 固定なので注意 -->
-                <template #item="{ element }: { element: IHashtag }">
-                    <div v-ripple="!element.editing" class="hashtag" :class="{'hashtag--editing': element.editing}"
-                        @click="clickHashtag(element)">
-                        <!-- 以下では Icon コンポーネントを使うと個数が多いときに高負荷になるため、意図的に SVG を直書きしている -->
-                        <!-- input[type=search] を使っているのは autocomplete 避け目的のはず -->
-                        <input type="search" enterkeyhint="done" class="hashtag__input" spellcheck="false" v-model="element.text"
-                            :disabled="!element.editing" @click.stop="">
-                        <button v-ripple class="hashtag__edit-button"
-                            @click.prevent.stop="element.editing = !element.editing;
-                                element.text = formatHashtag(element.text, true); updateTweetLetterCount()">
-                            <svg class="iconify iconify--fluent" width="17px" height="17px" viewBox="0 0 16 16"
-                                v-if="element.editing === false">
-                                <path fill="currentColor" d="M10.529 1.764a2.621 2.621 0 1 1 3.707 3.707l-.779.779L9.75 2.543l.779-.779ZM9.043 3.25L2.657 9.636a2.955 2.955 0 0 0-.772 1.354l-.87 3.386a.5.5 0 0 0 .61.608l3.385-.869a2.95 2.95 0 0 0 1.354-.772l6.386-6.386L9.043 3.25Z"></path>
-                            </svg>
-                            <svg class="iconify iconify--fluent" width="17px" height="17px" viewBox="0 0 16 16"
-                                v-if="element.editing === true">
-                                <path fill="currentColor" d="M14.046 3.486a.75.75 0 0 1-.032 1.06l-7.93 7.474a.85.85 0 0 1-1.188-.022l-2.68-2.72a.75.75 0 1 1 1.068-1.053l2.234 2.267l7.468-7.038a.75.75 0 0 1 1.06.032Z"></path>
-                            </svg>
-                        </button>
-                        <button v-ripple class="hashtag__delete-button"
-                            @click.prevent.stop="saved_twitter_hashtags.splice(saved_twitter_hashtags.indexOf(element), 1)">
-                            <svg class="iconify iconify--fluent" width="17px" height="17px" viewBox="0 0 16 16">
-                                <path fill="currentColor" d="M7 3h2a1 1 0 0 0-2 0ZM6 3a2 2 0 1 1 4 0h4a.5.5 0 0 1 0 1h-.564l-1.205 8.838A2.5 2.5 0 0 1 9.754 15H6.246a2.5 2.5 0 0 1-2.477-2.162L2.564 4H2a.5.5 0 0 1 0-1h4Zm1 3.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0v-5ZM9.5 6a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 1 0v-5a.5.5 0 0 0-.5-.5Z"></path>
-                            </svg>
-                        </button>
-                        <div class="hashtag__sort-handle">
-                            <svg class="iconify iconify--material-symbols" width="17px" height="17px" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M5 15q-.425 0-.713-.288T4 14q0-.425.288-.713T5 13h14q.425 0 .713.288T20 14q0 .425-.288.713T19 15H5Zm0-4q-.425 0-.713-.288T4 10q0-.425.288-.713T5 9h14q.425 0 .713.288T20 10q0 .425-.288.713T19 11H5Z"></path>
-                            </svg>
-                        </div>
-                    </div>
-                </template>
-            </draggable>
-        </div>
-        <div class="twitter-account-list" :class="{'twitter-account-list--display': is_twitter_account_list_display}">
-            <div v-ripple class="twitter-account" v-for="account in twitterStore.selectable_accounts"
-                :key="getSelectableAccountKey(account)" @click="updateSelectedAccount(account)">
-                <!-- 単体アカウントは左下のサービスバッジ、紐付けアカウントは設定画面同様に Bluesky アバターを重ねる -->
-                <div class="twitter-account__icon-wrapper">
-                    <img class="twitter-account__icon" :src="getSelectableAccountIconUrl(account)">
-                    <img v-if="account.kind === 'Linked'" class="twitter-account__icon-badge"
-                        :src="account.account_link.bluesky_account.icon_url || '/assets/images/account-icon-default.png'">
-                    <span v-if="account.kind === 'Twitter'" class="twitter-account__service-badge twitter-account__service-badge--twitter">
-                        <Icon icon="fa-brands:twitter" />
-                    </span>
-                    <span v-if="account.kind === 'Bluesky'" class="twitter-account__service-badge twitter-account__service-badge--bluesky">
-                        <Icon icon="simple-icons:bluesky" />
-                    </span>
-                    <span v-if="account.kind === 'Linked'" class="twitter-account__service-badge twitter-account__service-badge--linked">
-                        <span class="twitter-account__service-badge-segment twitter-account__service-badge-segment--twitter">
-                            <Icon icon="fa-brands:twitter" />
+                <textarea class="tweet-form__textarea" enterkeyhint="enter" placeholder="ツイート" spellcheck="false" v-model="tweet_text" ref="tweet_text"
+                    @input="updateTweetLetterCount()"
+                    @paste="pasteClipboardData($event)"
+                    @focus="is_tweet_text_form_focused = true"
+                    @blur="is_tweet_text_form_focused = false">
+                </textarea>
+                <div class="tweet-form__control" :class="{
+                    'tweet-form__control--linked': twitterStore.selected_account?.kind === 'Linked',
+                }">
+                    <div v-ripple class="account-button" :class="{'account-button--no-login': !twitterStore.has_twitter_panel_account}"
+                        @click="clickAccountButton()">
+                        <img class="account-button__icon"
+                            :src="twitterStore.has_twitter_panel_account ? selectedAccountIconUrl : '/assets/images/account-icon-default.png'">
+                        <span class="account-button__screen-name">
+                            {{twitterStore.has_twitter_panel_account ? selectedAccountDisplayId : '連携されていません'}}
                         </span>
-                        <span class="twitter-account__service-badge-segment twitter-account__service-badge-segment--bluesky">
+                        <Icon class="account-button__menu" icon="fluent:more-circle-20-regular" width="18px" />
+                    </div>
+                    <button v-if="twitterStore.selected_account?.kind === 'Linked'" v-ripple
+                        class="post-target-button" @click="cycleLinkedPostTarget()">
+                        <span v-if="isLinkedPostTargetBoth" class="dual-service-icon dual-service-icon--post-target">
+                            <Icon icon="fa-brands:twitter" />
                             <Icon icon="simple-icons:bluesky" />
                         </span>
-                    </span>
-                </div>
-                <div class="twitter-account__info">
-                    <div v-for="row in getSelectableAccountNameRows(account)" :key="row.id" class="twitter-account__name">
-                        <Icon v-if="row.icon" class="twitter-account__name-service-icon" :icon="row.icon" />
-                        <span class="twitter-account__text">{{row.text}}</span>
+                        <Icon v-else-if="shouldPostToTwitter" icon="fa-brands:twitter" width="14px" />
+                        <Icon v-else-if="shouldPostToBluesky" icon="simple-icons:bluesky" width="14px" />
+                    </button>
+                    <div class="limit-meter">
+                        <div class="limit-meter__content" :class="{
+                            'limit-meter__content--yellow': tweet_letter_remain_count <= 20,
+                            'limit-meter__content--red': tweet_letter_remain_count <= 0,
+                        }">
+                            <Icon icon="fa-brands:twitter" width="12px" style="margin-right: -2px;" />
+                            <span>{{tweet_letter_remain_count}}</span>
+                        </div>
+                        <div class="limit-meter__content">
+                            <Icon icon="fluent:image-16-filled" width="14px" />
+                            <span>{{playerStore.twitter_selected_capture_blobs.length}}/4</span>
+                        </div>
                     </div>
-                    <span v-if="account.kind === 'Linked'" class="twitter-account__screen-name">
-                        <span class="twitter-account__screen-name-handle">@{{account.account_link.twitter_account.screen_name}}</span>
-                        <Icon class="twitter-account__screen-name-link-icon" icon="fluent:link-20-filled" />
-                        <span class="twitter-account__screen-name-handle">@{{account.account_link.bluesky_account.handle}}</span>
-                    </span>
-                    <span v-else class="twitter-account__screen-name">
-                        <span class="twitter-account__screen-name-handle">{{getSelectableAccountDisplayId(account)}}</span>
-                    </span>
+                    <button class="tweet-button" :class="tweetButtonClass" v-ripple="Utils.isTouchDevice() === false" :disabled="is_tweet_button_disabled"
+                        @click="sendTweet()" @touchstart="sendTweet()">
+                        <span v-if="shouldPostToBothServices" class="dual-service-icon dual-service-icon--tweet-button">
+                            <Icon icon="fa-brands:twitter" />
+                            <Icon icon="simple-icons:bluesky" />
+                        </span>
+                        <Icon v-else-if="shouldPostToTwitter" icon="fa-brands:twitter" height="16px" />
+                        <Icon v-else-if="shouldPostToBluesky" icon="simple-icons:bluesky" height="15px" />
+                        <span class="ml-1">{{tweetButtonLabel}}</span>
+                    </button>
                 </div>
-                <svg class="twitter-account__check iconify iconify--fluent" width="24px" height="24px" viewBox="0 0 16 16"
-                    v-show="isSelectableAccountSelected(account)">
-                    <path fill="currentColor" d="M14.046 3.486a.75.75 0 0 1-.032 1.06l-7.93 7.474a.85.85 0 0 1-1.188-.022l-2.68-2.72a.75.75 0 1 1 1.068-1.053l2.234 2.267l7.468-7.038a.75.75 0 0 1 1.06.032Z"></path>
-                </svg>
             </div>
-        </div>
+            <div class="hashtag-list" :class="{
+                'hashtag-list--display': is_hashtag_list_display,
+                'hashtag-list--virtual-keyboard-display': playerStore.is_virtual_keyboard_display && Utils.hasActiveElementClass('hashtag__input'),
+            }">
+                <div class="hashtag-heading">
+                    <div class="hashtag-heading__text">
+                        <Icon icon="charm:hash" width="17px" />
+                        <span class="ml-1">ハッシュタグリスト</span>
+                    </div>
+                    <button v-ripple class="hashtag-heading__add-button"
+                        @click="saved_twitter_hashtags.push({id: Utils.time(), text: '#ここにハッシュタグを入力', editing: false})">
+                        <Icon icon="fluent:add-12-filled" width="17px" />
+                        <span class="ml-1">追加</span>
+                    </button>
+                </div>
+                <draggable class="hashtag-container" handle=".hashtag__sort-handle" item-key="id"
+                    v-model="saved_twitter_hashtags">
+                    <!-- スロットの仕様上、名前は element 固定なので注意 -->
+                    <template #item="{ element }: { element: IHashtag }">
+                        <div v-ripple="!element.editing" class="hashtag" :class="{'hashtag--editing': element.editing}"
+                            @click="clickHashtag(element)">
+                            <!-- 以下では Icon コンポーネントを使うと個数が多いときに高負荷になるため、意図的に SVG を直書きしている -->
+                            <!-- input[type=search] を使っているのは autocomplete 避け目的のはず -->
+                            <input type="search" enterkeyhint="done" class="hashtag__input" spellcheck="false" v-model="element.text"
+                                :disabled="!element.editing" @click.stop="">
+                            <button v-ripple class="hashtag__edit-button"
+                                @click.prevent.stop="element.editing = !element.editing;
+                                    element.text = formatHashtag(element.text, true); updateTweetLetterCount()">
+                                <svg class="iconify iconify--fluent" width="17px" height="17px" viewBox="0 0 16 16"
+                                    v-if="element.editing === false">
+                                    <path fill="currentColor" d="M10.529 1.764a2.621 2.621 0 1 1 3.707 3.707l-.779.779L9.75 2.543l.779-.779ZM9.043 3.25L2.657 9.636a2.955 2.955 0 0 0-.772 1.354l-.87 3.386a.5.5 0 0 0 .61.608l3.385-.869a2.95 2.95 0 0 0 1.354-.772l6.386-6.386L9.043 3.25Z"></path>
+                                </svg>
+                                <svg class="iconify iconify--fluent" width="17px" height="17px" viewBox="0 0 16 16"
+                                    v-if="element.editing === true">
+                                    <path fill="currentColor" d="M14.046 3.486a.75.75 0 0 1-.032 1.06l-7.93 7.474a.85.85 0 0 1-1.188-.022l-2.68-2.72a.75.75 0 1 1 1.068-1.053l2.234 2.267l7.468-7.038a.75.75 0 0 1 1.06.032Z"></path>
+                                </svg>
+                            </button>
+                            <button v-ripple class="hashtag__delete-button"
+                                @click.prevent.stop="saved_twitter_hashtags.splice(saved_twitter_hashtags.indexOf(element), 1)">
+                                <svg class="iconify iconify--fluent" width="17px" height="17px" viewBox="0 0 16 16">
+                                    <path fill="currentColor" d="M7 3h2a1 1 0 0 0-2 0ZM6 3a2 2 0 1 1 4 0h4a.5.5 0 0 1 0 1h-.564l-1.205 8.838A2.5 2.5 0 0 1 9.754 15H6.246a2.5 2.5 0 0 1-2.477-2.162L2.564 4H2a.5.5 0 0 1 0-1h4Zm1 3.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0v-5ZM9.5 6a.5.5 0 0 0-.5.5v5a.5.5 0 0 0 1 0v-5a.5.5 0 0 0-.5-.5Z"></path>
+                                </svg>
+                            </button>
+                            <div class="hashtag__sort-handle">
+                                <svg class="iconify iconify--material-symbols" width="17px" height="17px" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M5 15q-.425 0-.713-.288T4 14q0-.425.288-.713T5 13h14q.425 0 .713.288T20 14q0 .425-.288.713T19 15H5Zm0-4q-.425 0-.713-.288T4 10q0-.425.288-.713T5 9h14q.425 0 .713.288T20 10q0 .425-.288.713T19 11H5Z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </template>
+                </draggable>
+            </div>
+            <div class="twitter-account-list" :class="{'twitter-account-list--display': is_twitter_account_list_display}">
+                <div v-ripple class="twitter-account" v-for="account in twitterStore.selectable_accounts"
+                    :key="getSelectableAccountKey(account)" @click="updateSelectedAccount(account)">
+                    <!-- 単体アカウントは左下のサービスバッジ、紐付けアカウントは設定画面同様に Bluesky アバターを重ねる -->
+                    <div class="twitter-account__icon-wrapper">
+                        <img class="twitter-account__icon" :src="getSelectableAccountIconUrl(account)">
+                        <img v-if="account.kind === 'Linked'" class="twitter-account__icon-badge"
+                            :src="account.account_link.bluesky_account.icon_url || '/assets/images/account-icon-default.png'">
+                        <span v-if="account.kind === 'Twitter'" class="twitter-account__service-badge twitter-account__service-badge--twitter">
+                            <Icon icon="fa-brands:twitter" />
+                        </span>
+                        <span v-if="account.kind === 'Bluesky'" class="twitter-account__service-badge twitter-account__service-badge--bluesky">
+                            <Icon icon="simple-icons:bluesky" />
+                        </span>
+                        <span v-if="account.kind === 'Linked'" class="twitter-account__service-badge twitter-account__service-badge--linked">
+                            <span class="twitter-account__service-badge-segment twitter-account__service-badge-segment--twitter">
+                                <Icon icon="fa-brands:twitter" />
+                            </span>
+                            <span class="twitter-account__service-badge-segment twitter-account__service-badge-segment--bluesky">
+                                <Icon icon="simple-icons:bluesky" />
+                            </span>
+                        </span>
+                    </div>
+                    <div class="twitter-account__info">
+                        <div v-for="row in getSelectableAccountNameRows(account)" :key="row.id" class="twitter-account__name">
+                            <Icon v-if="row.icon" class="twitter-account__name-service-icon" :icon="row.icon" />
+                            <span class="twitter-account__text">{{row.text}}</span>
+                        </div>
+                        <span v-if="account.kind === 'Linked'" class="twitter-account__screen-name">
+                            <span class="twitter-account__screen-name-handle">@{{account.account_link.twitter_account.screen_name}}</span>
+                            <Icon class="twitter-account__screen-name-link-icon" icon="fluent:link-20-filled" />
+                            <span class="twitter-account__screen-name-handle">@{{account.account_link.bluesky_account.handle}}</span>
+                        </span>
+                        <span v-else class="twitter-account__screen-name">
+                            <span class="twitter-account__screen-name-handle">{{getSelectableAccountDisplayId(account)}}</span>
+                        </span>
+                    </div>
+                    <svg class="twitter-account__check iconify iconify--fluent" width="24px" height="24px" viewBox="0 0 16 16"
+                        v-show="isSelectableAccountSelected(account)">
+                        <path fill="currentColor" d="M14.046 3.486a.75.75 0 0 1-.032 1.06l-7.93 7.474a.85.85 0 0 1-1.188-.022l-2.68-2.72a.75.75 0 1 1 1.068-1.053l2.234 2.267l7.468-7.038a.75.75 0 0 1 1.06.032Z"></path>
+                    </svg>
+                </div>
+            </div>
+        </template>
     </div>
 </template>
 <script lang="ts">
@@ -205,6 +213,7 @@ import Twitter from '@/services/Twitter';
 import { ISelectableAccount } from '@/services/Users';
 import useChannelsStore from '@/stores/ChannelsStore';
 import usePlayerStore from '@/stores/PlayerStore';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useSettingsStore, { ITwitterPanelPostTarget } from '@/stores/SettingsStore';
 import useTwitterStore from '@/stores/TwitterStore';
 import useUserStore from '@/stores/UserStore';
@@ -331,7 +340,7 @@ export default defineComponent({
         };
     },
     computed: {
-        ...mapStores(useChannelsStore, usePlayerStore, useSettingsStore, useUserStore, useTwitterStore),
+        ...mapStores(useChannelsStore, usePlayerStore, useServerSettingsStore, useSettingsStore, useUserStore, useTwitterStore),
 
         // ツイートボタンが無効かどうか
         is_tweet_button_disabled(): boolean {
@@ -503,6 +512,9 @@ export default defineComponent({
         },
     },
     async created() {
+
+        // オフラインモード判定のためにサーバー設定を取得しておく
+        await this.serverSettingsStore.fetchServerSettingsOnce();
 
         // アカウント情報を更新
         await this.userStore.fetchUser();
@@ -1290,6 +1302,31 @@ export default defineComponent({
         z-index: 10;
         @media (hover: none) {
             content-visibility: auto;
+        }
+    }
+
+    // オフラインモード時に、パネルの中身の代わりに表示する案内
+    .twitter-offline-announce {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        height: 100%;
+        padding-left: 12px;
+        padding-right: 12px;
+
+        &__heading {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        &__text {
+            margin-top: 12px;
+            color: rgb(var(--v-theme-text-darken-1));
+            font-size: 13.5px;
+            text-align: center;
+            line-height: 1.65;
         }
     }
 
